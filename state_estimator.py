@@ -21,6 +21,7 @@ class StateEstimator:
     WHEELBASE = 1.53  # m
     CAR_MASS = 192  # kg
     STANDSTILL_RPM = 5.0
+    YAW_SOURCE = "gyro"
 
     def __init__(self):
         self.prev_time = None
@@ -28,7 +29,7 @@ class StateEstimator:
         self.y = 0.0
         self.yaw = 0.0
         #gyro bias estimation
-        self.yaw_rate_count = 0.0
+        self.yaw_rate_count = 0
         self.yaw_rate_sum = 0.0
         self.yaw_rate_bias = 0.0
 
@@ -53,7 +54,13 @@ class StateEstimator:
                 self.yaw_rate_count += 1
                 self.yaw_rate_bias = self.yaw_rate_sum / self.yaw_rate_count
 
-        self.yaw += (meas.yaw_rate - self.yaw_rate_bias) * dt
+        if self.YAW_SOURCE == "steer":
+            yaw_rate = vx * math.tan(math.radians(meas.steer_angle)) / self.WHEELBASE
+        else:
+            yaw_rate = meas.yaw_rate - self.yaw_rate_bias
+              
+        self.yaw += yaw_rate * dt
+        #self.yaw += (meas.yaw_rate - self.yaw_rate_bias) * dt
 
         #position
         self.x = self.x + vx * math.cos(self.yaw) * dt
