@@ -20,12 +20,17 @@ class StateEstimator:
     TRACK = 1.23  # m
     WHEELBASE = 1.53  # m
     CAR_MASS = 192  # kg
+    STANDSTILL_RPM = 5.0
 
     def __init__(self):
         self.prev_time = None
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
+        #gyro bias estimation
+        self.yaw_rate_count = 0.0
+        self.yaw_rate_sum = 0.0
+        self.yaw_rate_bias = 0.0
 
     def predict(self, meas: CarSignals) -> State:
         if self.prev_time is None:
@@ -40,7 +45,15 @@ class StateEstimator:
         vx = (v_rl + v_rr) / 2
 
         #heading
-        self.yaw = self.yaw + meas.yaw_rate * dt
+        if (abs(meas.wheel_speed_rl) < self.STANDSTILL_RPM 
+            and abs(meas.wheel_speed_rr) < self.STANDSTILL_RPM 
+            and abs(meas.wheel_speed_fl) < self.STANDSTILL_RPM 
+            and abs(meas.wheel_speed_fr) < self.STANDSTILL_RPM):
+                self.yaw_rate_sum += meas.yaw_rate
+                self.yaw_rate_count += 1
+                self.yaw_rate_bias = self.yaw_rate_sum / self.yaw_rate_count
+
+        self.yaw += (meas.yaw_rate - self.yaw_rate_bias) * dt
 
         #position
         self.x = self.x + vx * math.cos(self.yaw) * dt
